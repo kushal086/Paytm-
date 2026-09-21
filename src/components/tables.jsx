@@ -1,5 +1,6 @@
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowUpRight, CheckCircle2, Clock, FileText } from 'lucide-react'
+import { ArrowUpRight, CheckCircle2, ChevronsRight, Clock, FileText } from 'lucide-react'
 import { formatCompactINR, formatINR } from '../lib/format'
 import { railBadgeClass, RAILS } from '../lib/rails'
 import { Avatar, StatusPill } from './ui'
@@ -14,10 +15,54 @@ export function RailBadge({ rail }) {
   )
 }
 
+/**
+ * Tables are wider than the card on smaller screens. Without an affordance the
+ * hidden columns just look missing, so fade the cut edge and say it scrolls.
+ */
 export function TableShell({ children, className = '' }) {
+  const ref = useRef(null)
+  const [overflow, setOverflow] = useState({ right: false, left: false })
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return undefined
+
+    const measure = () => {
+      const max = el.scrollWidth - el.clientWidth
+      setOverflow({
+        left: el.scrollLeft > 4,
+        right: max > 4 && el.scrollLeft < max - 4,
+      })
+    }
+
+    measure()
+    el.addEventListener('scroll', measure, { passive: true })
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => {
+      el.removeEventListener('scroll', measure)
+      ro.disconnect()
+    }
+  }, [children])
+
   return (
-    <div className={`overflow-x-auto ${className}`}>
-      <table className="w-full min-w-[640px] border-collapse">{children}</table>
+    <div className={`relative ${className}`}>
+      <div ref={ref} className="overflow-x-auto">
+        <table className="w-full min-w-[640px] border-collapse">{children}</table>
+      </div>
+
+      {overflow.left && (
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-white to-transparent" />
+      )}
+      {overflow.right && (
+        <>
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-white to-transparent" />
+          <span className="pointer-events-none absolute bottom-2.5 right-2.5 flex items-center gap-1 rounded-full bg-ink-900/75 px-2.5 py-1 text-[10.5px] font-bold text-white shadow backdrop-blur-sm">
+            <ChevronsRight className="h-3 w-3" />
+            Scroll
+          </span>
+        </>
+      )}
     </div>
   )
 }
